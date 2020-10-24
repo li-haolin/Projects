@@ -1,0 +1,209 @@
+---
+title: "STA138Project"
+author: "Haolin Li"
+date: "3/18/2020"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Problem 1: Low birth rate or not
+```{r}
+library("readxl")
+baby = read_excel("~/Desktop/Statistics/STA138/baby.xls")
+```
+
+
+```{r}
+second_baby = glm(birth~age+weight+smoke+pre+hyp+visits+age*weight+weight*hyp+weight*pre, family = 'binomial', data = baby)
+summary(second_baby)
+
+```
+
+
+```{r}
+first_baby = glm(birth~age+weight+smoke+pre+hyp+visits, family = 'binomial', data = baby)
+
+anova(first_baby,second_baby, test = "Chisq")
+
+```
+#H0: beta7 = beat8 = beta9 = 0, HA = at least one of beta7, beta8 and beta9 is not zero.
+#G^2 is 0.19127 and p-value of 0.979 is larger than 0.05. therefore we cannot reject H0. 
+# Conclusion: interaction terms should not be added to the model
+
+```{r}
+step(first_baby)
+```
+# Backward function suggests drop (visit)(X6)
+```{r}
+reduced_baby = glm(birth~age+weight+smoke+pre+hyp, family = 'binomial', data = baby)
+anova(reduced_baby,first_baby, test = "Chisq")
+```
+# H0: beta6 = 0, HA: beta6 not equal 0
+# G^2 = 0.032333 p-value is 0.8573
+# p-value is larger than 0.05, cannot reject H0
+# Conclusion: we may drop X6 (Vistis is not significant)
+
+```{r}
+summary(reduced_baby)
+```
+# Smoke could be dropped
+
+```{r}
+reduced_baby = glm(birth~age+weight+smoke+pre+hyp+visits, family = 'binomial', data = baby)
+check_baby = glm(birth~age+weight+pre+hyp, family = 'binomial', data = baby)
+anova(check_baby,reduced_baby, test = "Chisq")
+```
+# H0: beta3 = 0, HA: beta3 not equal 0
+# G^2 = 2.2026 p-value is 0.1378
+# p-value is larger than 0.05, cannot reject H0
+# Conclusion: we may drop X3 (smoke is not significant)
+
+```{r}
+summary(check_baby)
+check_baby = glm(birth~age+weight+pre+hyp, family = 'binomial', data = baby)
+final_baby = glm(birth~weight+pre+hyp, family = 'binomial', data = baby)
+anova(final_baby,check_baby, test = "Chisq")
+```
+# Further Investigation:
+# H0: beta1 = 0, HA: beta1 not equal 0
+# G^2 = 3.0196 p-value is 0.08227
+# p-value is smaller than 0.1, reject H0
+# Here significance level is 0.01. 
+# Conclusion: we may not drop X1 (age is significant)
+
+```{r}
+summary(check_baby)
+
+```
+
+#Problem 2
+```{r}
+chem = read_excel("~/Desktop/Statistics/STA138/ischemic.xlsx")
+```
+# Use Poisson because want to model its mean.
+
+```{r}
+second_chem = glm(visits~cost+age+gender+inter+drugs+complications+comorbidities+duration+gender*cost+gender*age+gender*inter+gender*drugs+gender*complications+gender*comorbidities+gender*duration, family = poisson(), data = chem)
+summary(second_chem)
+
+```
+# Consider dropping interaction terms except gender*complications
+```{r}
+first_chem = glm(visits~cost+age+gender+inter+drugs+complications+comorbidities+duration, family = poisson(), data = chem)
+
+third_chem = glm(visits~cost+age+gender+inter+drugs+complications+comorbidities+duration+gender*cost+gender*age+gender*inter+gender*drugs+gender*comorbidities+gender*duration, family = poisson(), data = chem)
+
+anova(first_chem,third_chem, test = "Chisq")
+
+
+```
+# Drop all interaction except gender*complications
+
+```{r}
+check1_chem = glm(visits~cost+age+gender+inter+drugs+complications+comorbidities+duration, family = poisson(), data = chem)
+
+check2_chem = glm(visits~cost+age+gender+inter+drugs+complications+comorbidities+duration+gender*complications, family = poisson(), data = chem)
+
+anova(check1_chem,check2_chem, test = "Chisq")
+
+```
+# Keep gender*complication
+
+```{r}
+step(check2_chem)
+```
+#Suggests drop comorbidities
+
+```{r}
+fourth_chem = glm(visits~cost+age+gender+inter+drugs+complications+duration+gender*complications, family = poisson(), data = chem)
+
+anova(fourth_chem,check2_chem, test = "Chisq")
+```
+# Drop comorbidities
+```{r}
+
+final_chem = glm(visits~cost+age+gender+inter+drugs+complications+duration+gender*complications, family = poisson(), data = chem)
+
+anova(final_chem,fourth_chem, test = "Chisq")
+```
+#Further Investigation 
+#Drop duration if significance level is 0.01
+#Drop age if significance level is 0.001
+```{r}
+summary(fourth_chem)
+```
+
+```{r}
+res_chem = residuals(fourth_chem, type = "deviance")
+plot(res_chem, main = "Problem 2 Untransformed: Deviance Residuals Plot", xlab = "Observations", ylab = "Residual" )
+
+```
+
+# Transformation of Variables
+```{r}
+trans_chem = glm(visits~cost+age+gender+inter+drugs+complications+comorbidities+duration+sqrt(cost)+sqrt(age)+sqrt(inter)+sqrt(drugs)+sqrt(complications)+sqrt(comorbidities)+sqrt(duration)+gender*sqrt(cost)+gender*sqrt(age)+gender*sqrt(inter)+gender*sqrt(drugs)+gender*sqrt(complications)+gender*sqrt(comorbidities)+gender*sqrt(duration), family = poisson(), data = chem)
+summary(trans_chem)
+
+```
+# Drop all interaction terms except gender:sqrt(complications) 
+```{r}
+trans2_chem = glm(visits~cost+age+gender+inter+drugs+complications+comorbidities+duration+sqrt(cost)+sqrt(age)+sqrt(inter)+sqrt(drugs)+sqrt(complications)+sqrt(comorbidities)+sqrt(duration)+gender*sqrt(complications), family = poisson(), data = chem)
+
+anova(trans2_chem,trans_chem, test = "Chisq")
+```
+# Dropped all interction terms except gender:sqrt(complications) 
+
+```{r}
+step(trans2_chem)
+```
+# Suggests drop cost,drugs,complications, comorbidities, sqrt(gender), sqrt(inter),sqrt(duration)
+```{r}
+trans3_chem = glm(formula = visits ~ age + gender + inter + duration + sqrt(cost) + sqrt(age) + sqrt(drugs) + sqrt(complications) + sqrt(comorbidities) +gender*sqrt(complications), family = poisson(), data = chem)
+
+anova(trans3_chem,trans2_chem, test = "Chisq")
+
+```
+# Dropped Supported
+
+```{r}
+summary(trans3_chem)
+```
+# Should I Drop sqrt(comorbidities)?
+
+
+```{r}
+res_trans_chem = residuals(trans3_chem, type = "deviance")
+plot(res_trans_chem, main = "Problem 2 Transformed: Deviance Residuals Plot", xlab = "Observations", ylab = "Residual" )
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
